@@ -6,23 +6,23 @@ using System;
 [RequireComponent(typeof(MeshRenderer))]
 public class GeodesicDome : MonoBehaviour
 {
-	public int iterations = 1;
+	private int iterations = 4;
 
 	private Vector3[] vertices;
-	private Vector3[] verticesSpherical;
 	private int[] triangles;
 
 	public void Start()
 	{
 		InitOctahedron();
-		verticesSpherical = CartesianToSpherical(vertices);
 
-		for(int i = 2; i < iterations; i++)
+		for(int i = 0; i < iterations; i++)
         {
+			Debug.Log("Iteration : " + i);
+			Debug.Log("Starting with " + vertices.Length + " vertices and " + triangles.Length/3 + " face(s).");
 			Subdivide();
+			Debug.Log("Ended up with " + vertices.Length + " vertices and " + triangles.Length/3 + " face(s).");
         }
 
-		vertices = SphericalToCartesian(verticesSpherical);
 		CreateFinalMesh();
 	}
 
@@ -39,14 +39,14 @@ public class GeodesicDome : MonoBehaviour
 		};
 
 		triangles = new int[] {
-			0, 1, 2,
-			0, 2, 3, 
-			0, 3, 4,
-			0, 4, 1, 
-			5, 2, 1,
-			5, 3, 2,
-			5, 4, 3,
-			5, 1, 4
+			0, 2, 1,
+			0, 3, 2, 
+			0, 4, 3,
+			0, 1, 4, 
+			5, 1, 2,
+			5, 2, 3,
+			5, 3, 4,
+			5, 4, 1
 		};
 	}
 
@@ -63,90 +63,74 @@ public class GeodesicDome : MonoBehaviour
     {
 		int k = vertices.Length;
 		List<int> newTriangles = new List<int>();
-		List<Vector3> newVerticesSpherical = new List<Vector3>(verticesSpherical);
+		List<Vector3> newVertices = new List<Vector3>(vertices);
 
-		for (int i = 0; i < triangles.Length; i++)
+		for (int i = 0; i < (triangles.Length/3); i++)
         {
 			var idx1 = triangles[i * 3];
 			var idx2 = triangles[i * 3 + 1];
 			var idx3 = triangles[i * 3 + 2];
-			var idx4 = k;
 
 			var v1 = vertices[idx1];
 			var v2 = vertices[idx2];
 			var v3 = vertices[idx3];
-			var v4 = new Vector3 ( 1, (v1[1]+v2[1]+v3[1])/3.0f, (v1[2]+v2[2]+v3[2])/3.0f );
-			newVerticesSpherical.Add(v4);
+
+			var v4 = new Vector3 ( (v1[0]+v2[0])/2.0f, (v1[1]+v2[1])/2.0f, (v1[2]+v2[2])/2.0f );
+			var v5 = new Vector3 ( (v2[0]+v3[0])/2.0f, (v2[1]+v3[1])/2.0f, (v2[2]+v3[2])/2.0f );
+			var v6 = new Vector3 ( (v3[0]+v1[0])/2.0f, (v3[1]+v1[1])/2.0f, (v3[2]+v1[2])/2.0f );
+			
+			int idx4, idx5, idx6;
+
+
+			// TODO check vertex before adding		
+			if(true)
+			{
+				idx4 = k;
+				var l = (float)Math.Sqrt(v4[0]*v4[0] + v4[1]*v4[1] + v4[2]*v4[2]);
+				var v4Projected = new Vector3(v4[0]/l, v4[1]/l, v4[2]/l);
+				newVertices.Add(v4Projected);	
+			}
+
+			if(true)
+			{
+				idx5 = k+1;
+				var l = (float)Math.Sqrt(v5[0]*v5[0] + v5[1]*v5[1] + v5[2]*v5[2]);
+				var v5Projected = new Vector3(v5[0]/l, v5[1]/l, v5[2]/l);
+				newVertices.Add(v5Projected);	
+			}
+
+			if(true)
+			{
+				idx6 = k+2;
+				var l = (float)Math.Sqrt(v6[0]*v6[0] + v6[1]*v6[1] + v6[2]*v6[2]);
+				var v6Projected = new Vector3(v6[0]/l, v6[1]/l, v6[2]/l);
+				newVertices.Add(v6Projected);	
+			}
+
 
 			newTriangles.Add(idx1);
+			newTriangles.Add(idx4);
+			newTriangles.Add(idx6);
+
+			newTriangles.Add(idx4);
 			newTriangles.Add(idx2);
-			newTriangles.Add(idx4);
+			newTriangles.Add(idx5);
 
-			newTriangles.Add(idx2);
+			newTriangles.Add(idx5);
 			newTriangles.Add(idx3);
-			newTriangles.Add(idx4);
+			newTriangles.Add(idx6);
 
-			newTriangles.Add(idx3);
-			newTriangles.Add(idx1);
 			newTriangles.Add(idx4);
+			newTriangles.Add(idx5);
+			newTriangles.Add(idx6);
 
-			k++;
+
+			k = k + 3;
         }
 
-		verticesSpherical = newVerticesSpherical.ToArray();
+		vertices = newVertices.ToArray();
 		triangles = newTriangles.ToArray();
     }
 
-
-	private Vector3 CartesianToSpherical(Vector3 v_in)
-    {
-		var x = v_in[0];
-		var y = v_in[1];
-		var z = v_in[2];
-
-		var r = 1.0f; // (float)Math.Sqrt(x * x + y * y + z * z);
-		var theta = (float)Math.Acos(z); //(float)Math.Acos(z / r);
-		var phi = (float)Math.Atan2(y, x);
-
-		//Debug.Log(r + " " + theta + " " + phi);
-
-		return new Vector3 ( r, theta, phi );
-	}
-
-	private Vector3[] CartesianToSpherical(Vector3[] a_in)
-    {
-		int n = a_in.Length;
-		Vector3[] a_out = new Vector3[n];
-		for(int i = 0; i < n; i++)
-        {
-			a_out[i] = CartesianToSpherical(a_in[i]);
-        }
-		return a_out;
-    }
-
-	private Vector3 SphericalToCartesian(Vector3 v_in)
-    {
-		//var r = v_in[0];
-		var theta = v_in[1];
-		var phi = v_in[2];
-
-		var x = (float)(Math.Sin(theta) * Math.Cos(phi));
-		var z = (float)(Math.Sin(theta) * Math.Sin(phi));
-		var y = (float)(Math.Cos(theta));
-
-		//Debug.Log(x + " " + y + " " + z);
-
-		return new Vector3 ( x, y, z );
-	}
-
-	private Vector3[] SphericalToCartesian(Vector3[] a_in)
-    {
-		int n = a_in.Length;
-		Vector3[] a_out = new Vector3[n];
-		for (int i = 0; i < n; i++)
-		{
-			a_out[i] = SphericalToCartesian(a_in[i]);
-		}
-		return a_out;
-	}
+	
 }

@@ -45,3 +45,11 @@ Thumbs.db
 Logs/ApiUpdaterCheck.txt
 Logs/AssetImportWorker0.log
 Logs/shadercompiler-AssetImportWorker0.log
+.vs/GeodesicSphere/v16/Server/sqlite3/db.lock
+.vs/GeodesicSphere/v16/Server/sqlite3/storage.ide
+.vscode/settings.json
+Logs/shadercompiler-UnityShaderCompiler.exe1.log
+Logs/shadercompiler-UnityShaderCompiler.exe2.log
+Logs/shadercompiler-UnityShaderCompiler.exe3.log
+Logs/shadercompiler-UnityShaderCompiler.exe4.log
+Logs/shadercompiler-UnityShaderCompiler.exe5.log
