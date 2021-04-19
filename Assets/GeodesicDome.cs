@@ -6,7 +6,7 @@ using System;
 [RequireComponent(typeof(MeshRenderer))]
 public class GeodesicDome : MonoBehaviour
 {
-	private int iterations = 4;
+	private int iterations = 3;
 
 	private Vector3[] vertices;
 	private int[] triangles;
@@ -30,12 +30,12 @@ public class GeodesicDome : MonoBehaviour
 	{
 		float s2 = (float)(1.0 / Math.Sqrt(2.0));
 		vertices = new Vector3[] {
-			new Vector3 (0, 0, 1), // North Pole
+			new Vector3 (0, 0, 1), 
 			new Vector3 (s2, -s2, 0),
 			new Vector3 (s2, s2, 0),
 			new Vector3 (-s2, s2, 0),
 			new Vector3 (-s2, -s2,0),
-			new Vector3 (0, 0, -1) // South Pole
+			new Vector3 (0, 0, -1) 
 		};
 
 		triangles = new int[] {
@@ -59,6 +59,53 @@ public class GeodesicDome : MonoBehaviour
 		mesh.RecalculateNormals();
 	}
 
+
+	private Vector3 ProjectToUnitSphere(Vector3 v)
+	{
+		var l = (float)Math.Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+		return new Vector3(v[0]/l, v[1]/l, v[2]/l);		
+	}
+
+	private void AddVertexIfNotPresent(int existingIndex, ref int newIndex, Vector3 v, ref int k, ref List<Vector3> newVertices)
+	{
+		if(existingIndex == -1)
+		{
+			newIndex = k;
+			newVertices.Add(v);
+			k = k + 1;
+		}
+		else
+		{
+			newIndex = existingIndex;
+		}
+	}
+
+	private bool AreNearlyEqual(Vector3 v1, Vector3 v2)
+	{
+		var dx = v1[0] - v2[0];
+		var dy = v1[1] - v2[1];
+		var dz = v1[2] - v2[2];
+		var d = Math.Sqrt(dx*dx + dy*dy + dz*dz);
+		if (d < 1e-8) 
+		{
+			return true;
+		} 
+		return false;
+	}
+
+	private int VertexAlreadyExists(Vector3 v0, List<Vector3> a)
+	{
+		for(int i = 0; i < a.Count; i++)
+		{
+			var v = a[i];
+			if(AreNearlyEqual(v0,v))
+			{
+				return i;
+			}
+		}
+		return -1;
+	}
+
 	private void Subdivide()
     {
 		int k = vertices.Length;
@@ -75,38 +122,23 @@ public class GeodesicDome : MonoBehaviour
 			var v2 = vertices[idx2];
 			var v3 = vertices[idx3];
 
-			var v4 = new Vector3 ( (v1[0]+v2[0])/2.0f, (v1[1]+v2[1])/2.0f, (v1[2]+v2[2])/2.0f );
-			var v5 = new Vector3 ( (v2[0]+v3[0])/2.0f, (v2[1]+v3[1])/2.0f, (v2[2]+v3[2])/2.0f );
-			var v6 = new Vector3 ( (v3[0]+v1[0])/2.0f, (v3[1]+v1[1])/2.0f, (v3[2]+v1[2])/2.0f );
+			var v4Interpolated = new Vector3 ( (v1[0]+v2[0])/2.0f, (v1[1]+v2[1])/2.0f, (v1[2]+v2[2])/2.0f );
+			var v5Interpolated = new Vector3 ( (v2[0]+v3[0])/2.0f, (v2[1]+v3[1])/2.0f, (v2[2]+v3[2])/2.0f );
+			var v6Interpolated = new Vector3 ( (v3[0]+v1[0])/2.0f, (v3[1]+v1[1])/2.0f, (v3[2]+v1[2])/2.0f );
 			
-			int idx4, idx5, idx6;
+			var v4Projected = ProjectToUnitSphere(v4Interpolated);
+			var v5Projected = ProjectToUnitSphere(v5Interpolated);
+			var v6Projected = ProjectToUnitSphere(v6Interpolated);
 
+			int v4p_idx = VertexAlreadyExists(v4Projected, newVertices);
+			int v5p_idx = VertexAlreadyExists(v5Projected, newVertices);
+			int v6p_idx = VertexAlreadyExists(v6Projected, newVertices);
 
-			// TODO check vertex before adding		
-			if(true)
-			{
-				idx4 = k;
-				var l = (float)Math.Sqrt(v4[0]*v4[0] + v4[1]*v4[1] + v4[2]*v4[2]);
-				var v4Projected = new Vector3(v4[0]/l, v4[1]/l, v4[2]/l);
-				newVertices.Add(v4Projected);	
-			}
+			int idx4 = -1, idx5 = -1, idx6 = -1;
 
-			if(true)
-			{
-				idx5 = k+1;
-				var l = (float)Math.Sqrt(v5[0]*v5[0] + v5[1]*v5[1] + v5[2]*v5[2]);
-				var v5Projected = new Vector3(v5[0]/l, v5[1]/l, v5[2]/l);
-				newVertices.Add(v5Projected);	
-			}
-
-			if(true)
-			{
-				idx6 = k+2;
-				var l = (float)Math.Sqrt(v6[0]*v6[0] + v6[1]*v6[1] + v6[2]*v6[2]);
-				var v6Projected = new Vector3(v6[0]/l, v6[1]/l, v6[2]/l);
-				newVertices.Add(v6Projected);	
-			}
-
+			AddVertexIfNotPresent(v4p_idx, ref idx4, v4Projected, ref k, ref newVertices);
+			AddVertexIfNotPresent(v5p_idx, ref idx5, v5Projected, ref k, ref newVertices);
+			AddVertexIfNotPresent(v6p_idx, ref idx6, v6Projected, ref k, ref newVertices);
 
 			newTriangles.Add(idx1);
 			newTriangles.Add(idx4);
@@ -123,9 +155,6 @@ public class GeodesicDome : MonoBehaviour
 			newTriangles.Add(idx4);
 			newTriangles.Add(idx5);
 			newTriangles.Add(idx6);
-
-
-			k = k + 3;
         }
 
 		vertices = newVertices.ToArray();
