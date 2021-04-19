@@ -2,13 +2,14 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
+
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
 public class GeodesicDome : MonoBehaviour
 {
-	private int iterations = 3;
+	public int iterations = 3;
 
-	private Vector3[] vertices;
+	private UnityEngine.Vector3[] vertices; 
 	private int[] triangles;
 
 	public void Start()
@@ -23,8 +24,50 @@ public class GeodesicDome : MonoBehaviour
 			Debug.Log("Ended up with " + vertices.Length + " vertices and " + triangles.Length/3 + " face(s).");
         }
 
+		// Volume calculations
+		var volumeOfDome = Volume();
+		var volumeOfUnitSphere = (4.0f / 3.0f) * (float)Math.PI;
+		Debug.Log("Volume BEFORE adjustment : " + volumeOfDome);
+		Debug.Log("Volume of CIRCUMSCRIBING (Unit) Sphere : " + volumeOfUnitSphere);
+		Debug.Log("Dome volume is " + ((volumeOfDome/volumeOfUnitSphere)*100.0).ToString("F4") + "% of the volume of the circumscribing sphere");
+
 		CreateFinalMesh();
 	}
+
+	private void AdjustVolume(float startVolume, float targetVolume)
+	{
+		var factor = (float)(Math.Sqrt(targetVolume/startVolume));
+		for(int i = 0; i < vertices.Length; i++)
+		{
+			vertices[i] = vertices[i] * factor;
+		}
+	}
+
+	private float Volume()
+	{
+		var totalVolume = 0.0f;
+		for (int i = 0; i < (triangles.Length/3); i++)
+        {
+			var idx1 = triangles[i * 3];
+			var idx2 = triangles[i * 3 + 1];
+			var idx3 = triangles[i * 3 + 2];
+
+			var v1 = vertices[idx1];
+			var v2 = vertices[idx2];
+			var v3 = vertices[idx3];
+
+			Matrix4x4 m = new Matrix4x4();
+			m.SetColumn(0, new Vector4(v1.x, v1.y, v1.z, 1));
+			m.SetColumn(1, new Vector4(v2.x, v2.y, v2.z, 1));
+			m.SetColumn(2, new Vector4(v3.x, v3.y, v3.z, 1));
+			m.SetColumn(3, new Vector4(0, 0, 0, 1));
+			var partialVolume = (float)Math.Abs(m.determinant / 6.0);
+			
+			totalVolume += partialVolume;
+		}
+		return totalVolume;
+	}
+
 
 	private void InitOctahedron()
 	{
@@ -60,12 +103,6 @@ public class GeodesicDome : MonoBehaviour
 	}
 
 
-	private Vector3 ProjectToUnitSphere(Vector3 v)
-	{
-		var l = (float)Math.Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-		return new Vector3(v[0]/l, v[1]/l, v[2]/l);		
-	}
-
 	private void AddVertexIfNotPresent(int existingIndex, ref int newIndex, Vector3 v, ref int k, ref List<Vector3> newVertices)
 	{
 		if(existingIndex == -1)
@@ -80,25 +117,12 @@ public class GeodesicDome : MonoBehaviour
 		}
 	}
 
-	private bool AreNearlyEqual(Vector3 v1, Vector3 v2)
-	{
-		var dx = v1[0] - v2[0];
-		var dy = v1[1] - v2[1];
-		var dz = v1[2] - v2[2];
-		var d = Math.Sqrt(dx*dx + dy*dy + dz*dz);
-		if (d < 1e-8) 
-		{
-			return true;
-		} 
-		return false;
-	}
-
 	private int VertexAlreadyExists(Vector3 v0, List<Vector3> a)
 	{
 		for(int i = 0; i < a.Count; i++)
 		{
 			var v = a[i];
-			if(AreNearlyEqual(v0,v))
+			if(v0 == v)
 			{
 				return i;
 			}
@@ -122,23 +146,25 @@ public class GeodesicDome : MonoBehaviour
 			var v2 = vertices[idx2];
 			var v3 = vertices[idx3];
 
-			var v4Interpolated = new Vector3 ( (v1[0]+v2[0])/2.0f, (v1[1]+v2[1])/2.0f, (v1[2]+v2[2])/2.0f );
-			var v5Interpolated = new Vector3 ( (v2[0]+v3[0])/2.0f, (v2[1]+v3[1])/2.0f, (v2[2]+v3[2])/2.0f );
-			var v6Interpolated = new Vector3 ( (v3[0]+v1[0])/2.0f, (v3[1]+v1[1])/2.0f, (v3[2]+v1[2])/2.0f );
-			
-			var v4Projected = ProjectToUnitSphere(v4Interpolated);
-			var v5Projected = ProjectToUnitSphere(v5Interpolated);
-			var v6Projected = ProjectToUnitSphere(v6Interpolated);
-
-			int v4p_idx = VertexAlreadyExists(v4Projected, newVertices);
-			int v5p_idx = VertexAlreadyExists(v5Projected, newVertices);
-			int v6p_idx = VertexAlreadyExists(v6Projected, newVertices);
-
 			int idx4 = -1, idx5 = -1, idx6 = -1;
 
+			// Calculate and add the three new vertices
+			var v4Interpolated = UnityEngine.Vector3.Lerp(v1, v2, 0.5f);
+			var v4Projected = UnityEngine.Vector3.Normalize(v4Interpolated);
+			int v4p_idx = VertexAlreadyExists(v4Projected, newVertices);
 			AddVertexIfNotPresent(v4p_idx, ref idx4, v4Projected, ref k, ref newVertices);
+
+			var v5Interpolated = UnityEngine.Vector3.Lerp(v2, v3, 0.5f);
+			var v5Projected = UnityEngine.Vector3.Normalize(v5Interpolated);
+			int v5p_idx = VertexAlreadyExists(v5Projected, newVertices);
 			AddVertexIfNotPresent(v5p_idx, ref idx5, v5Projected, ref k, ref newVertices);
+			
+			var v6Interpolated = UnityEngine.Vector3.Lerp(v3, v1, 0.5f);
+			var v6Projected = UnityEngine.Vector3.Normalize(v6Interpolated);
+			int v6p_idx = VertexAlreadyExists(v6Projected, newVertices);
 			AddVertexIfNotPresent(v6p_idx, ref idx6, v6Projected, ref k, ref newVertices);
+
+			// Add the indices to form three new triangles to replace the original one
 
 			newTriangles.Add(idx1);
 			newTriangles.Add(idx4);
