@@ -17,7 +17,7 @@ public class GeodesicDome : MonoBehaviour
 		InitOctahedron();
 		verticesSpherical = CartesianToSpherical(vertices);
 
-		for(int i = 1; i < iterations; i++)
+		for(int i = 2; i < iterations; i++)
         {
 			Subdivide();
         }
@@ -61,8 +61,42 @@ public class GeodesicDome : MonoBehaviour
 
 	private void Subdivide()
     {
+		int k = vertices.Length;
+		List<int> newTriangles = new List<int>();
+		List<Vector3> newVerticesSpherical = new List<Vector3>(verticesSpherical);
 
+		for (int i = 0; i < triangles.Length; i++)
+        {
+			var idx1 = triangles[i * 3];
+			var idx2 = triangles[i * 3 + 1];
+			var idx3 = triangles[i * 3 + 2];
+			var idx4 = k;
+
+			var v1 = vertices[idx1];
+			var v2 = vertices[idx2];
+			var v3 = vertices[idx3];
+			var v4 = new Vector3 ( 1, (v1[1]+v2[1]+v3[1])/3.0f, (v1[2]+v2[2]+v3[2])/3.0f );
+			newVerticesSpherical.Add(v4);
+
+			newTriangles.Add(idx1);
+			newTriangles.Add(idx2);
+			newTriangles.Add(idx4);
+
+			newTriangles.Add(idx2);
+			newTriangles.Add(idx3);
+			newTriangles.Add(idx4);
+
+			newTriangles.Add(idx3);
+			newTriangles.Add(idx1);
+			newTriangles.Add(idx4);
+
+			k++;
+        }
+
+		verticesSpherical = newVerticesSpherical.ToArray();
+		triangles = newTriangles.ToArray();
     }
+
 
 	private Vector3 CartesianToSpherical(Vector3 v_in)
     {
@@ -70,11 +104,11 @@ public class GeodesicDome : MonoBehaviour
 		var y = v_in[1];
 		var z = v_in[2];
 
-		var r = (float)Math.Sqrt(x * x + y * y + z * z);
-		var theta = (float)Math.Acos(z / r);
+		var r = 1.0f; // (float)Math.Sqrt(x * x + y * y + z * z);
+		var theta = (float)Math.Acos(z); //(float)Math.Acos(z / r);
 		var phi = (float)Math.Atan2(y, x);
 
-		Debug.Log(r + " " + theta + " " + phi);
+		//Debug.Log(r + " " + theta + " " + phi);
 
 		return new Vector3 ( r, theta, phi );
 	}
@@ -92,15 +126,15 @@ public class GeodesicDome : MonoBehaviour
 
 	private Vector3 SphericalToCartesian(Vector3 v_in)
     {
-		var r = v_in[0];
+		//var r = v_in[0];
 		var theta = v_in[1];
 		var phi = v_in[2];
 
-		var x = (float)(r * Math.Sin(theta) * Math.Cos(phi));
-		var z = (float)(r * Math.Sin(theta) * Math.Sin(phi));
-		var y = (float)(r * Math.Cos(theta));
+		var x = (float)(Math.Sin(theta) * Math.Cos(phi));
+		var z = (float)(Math.Sin(theta) * Math.Sin(phi));
+		var y = (float)(Math.Cos(theta));
 
-		Debug.Log(x + " " + y + " " + z);
+		//Debug.Log(x + " " + y + " " + z);
 
 		return new Vector3 ( x, y, z );
 	}

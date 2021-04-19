@@ -42,3 +42,6 @@ sysinfo.txt
 Icon?
 ehthumbs.db
 Thumbs.db
+Logs/ApiUpdaterCheck.txt
+Logs/AssetImportWorker0.log
+Logs/shadercompiler-AssetImportWorker0.log
