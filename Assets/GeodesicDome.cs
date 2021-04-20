@@ -34,18 +34,12 @@ public class GeodesicDome : MonoBehaviour
 		CreateFinalMesh();
 	}
 
-	private void AdjustVolume(float startVolume, float targetVolume)
-	{
-		var factor = (float)(Math.Sqrt(targetVolume/startVolume));
-		for(int i = 0; i < vertices.Length; i++)
-		{
-			vertices[i] = vertices[i] * factor;
-		}
-	}
-
 	private float Volume()
 	{
 		var totalVolume = 0.0f;
+		// For each triangular face, we define a (very irregular) tetrahedron whose vertices are:
+		// - the vertices of the face,
+		// - plus the centre of the circumscribing sphere (which is the origin)
 		for (int i = 0; i < (triangles.Length/3); i++)
         {
 			var idx1 = triangles[i * 3];
@@ -56,6 +50,7 @@ public class GeodesicDome : MonoBehaviour
 			var v2 = vertices[idx2];
 			var v3 = vertices[idx3];
 
+			// The volume of each tetrahedron...
 			Matrix4x4 m = new Matrix4x4();
 			m.SetColumn(0, new Vector4(v1.x, v1.y, v1.z, 1));
 			m.SetColumn(1, new Vector4(v2.x, v2.y, v2.z, 1));
@@ -63,6 +58,7 @@ public class GeodesicDome : MonoBehaviour
 			m.SetColumn(3, new Vector4(0, 0, 0, 1));
 			var partialVolume = (float)Math.Abs(m.determinant / 6.0);
 			
+			// ... and summing it all up.
 			totalVolume += partialVolume;
 		}
 		return totalVolume;
@@ -119,6 +115,8 @@ public class GeodesicDome : MonoBehaviour
 
 	private int VertexAlreadyExists(Vector3 v0, List<Vector3> a)
 	{
+		// This is a brute force search. OK for a small number of iterations
+		// but ideally some faster method would be more suitable for really huge domes.
 		for(int i = 0; i < a.Count; i++)
 		{
 			var v = a[i];
